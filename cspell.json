@@ -2,5 +2,5 @@
   "version": "0.2",
   "language": "en",
   "words": [],
-  "ignorePaths": ["node_modules/", ".husky", "pnpm-lock.yaml", "package.json"]
+  "ignorePaths": ["node_modules/", ".husky", "pnpm-lock.yaml", "package.json", "tests/"]
 }

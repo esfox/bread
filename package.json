@@ -13,11 +13,14 @@
     "test": "vitest"
   },
   "devDependencies": {
+    "@ngneat/falso": "^7.1.0",
     "@types/node": "^20.6.0",
+    "@types/pg": "^8.10.2",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
     "concurrently": "^8.2.1",
     "cspell": "^7.3.6",
+    "dotenv": "^16.3.1",
     "eslint": "^8.49.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^17.1.0",
@@ -28,5 +31,10 @@
     "prettier": "^3.0.3",
     "typescript": "^5.2.2",
     "vitest": "^0.34.4"
+  },
+  "dependencies": {
+    "knex": "^2.5.1",
+    "pg": "^8.11.3",
+    "pg-native": "^3.0.1"
   }
 }

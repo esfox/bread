@@ -1,0 +1,9 @@
+- Fix ordering mixing with filters, search and pagination
+- Pass Knex connection instead to `PostgresBread` and make it DB-agnostic
+- DB-specific breads after making DB-agnostic bread
+- Debug mode where each query generated is logged
+- Table columns constants builder from schema
+- Table types builder from schema
+- Bread for JSON file data source
+- Encryption
+- Migrator and migrations manager (unsure plan)

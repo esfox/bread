@@ -1,4 +1,3 @@
-- Fix ordering mixing with filters, search and pagination
 - Pass Knex connection instead to `PostgresBread` and make it DB-agnostic
 - DB-specific breads after making DB-agnostic bread
 - Debug mode where each query generated is logged

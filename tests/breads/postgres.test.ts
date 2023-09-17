@@ -32,14 +32,12 @@ mockData.push({
   direction: 'right',
 });
 
-const expectedMockRecord = {
+mockData.push({
   id: idFactory(),
   name: randFullName(),
   description: 'there is foobar in this description',
   direction: 'left',
-};
-
-mockData.push(expectedMockRecord);
+});
 
 const mockRecord1 = mockData[0];
 const mockRecord2 = mockData[1];
@@ -158,7 +156,8 @@ test('`browse` ordering', async () => {
 });
 
 // TODO: Add ordering
-test('`browse` filters, search and pagination', async () => {
+test('`browse` filters, search, ordering and pagination', async () => {
+  const searchQuery = 'foobar';
   const { records } = await postgresBread.browse({
     filters: [
       {
@@ -170,13 +169,26 @@ test('`browse` filters, search and pagination', async () => {
       query: 'foobar',
       fields: ['name', 'description'],
     },
+    ordering: [
+      {
+        column: 'id',
+        order: 'desc',
+      },
+    ],
     pagination: {
       page: 2,
       count: 1,
     },
   });
 
-  expect(records[0]).toMatchObject(expectedMockRecord);
+  const expectedRecord = mockData
+    .filter(
+      (record) =>
+        record.direction === 'left' &&
+        (record.name.includes(searchQuery) || record.description.includes(searchQuery)),
+    )
+    .sort((a, b) => b.id - a.id)[1];
+  expect(records[0]).toMatchObject(expectedRecord);
 });
 
 test('`read`', async () => {

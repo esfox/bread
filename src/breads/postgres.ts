@@ -115,6 +115,10 @@ export class PostgresBread {
       query = this.withSearch(query, search.query, search.fields);
     }
 
+    /* The query is cloned here since the total records query should have
+      filters but not ordering, since the query will not work if with ordering. */
+    const queryWithFilters = query.clone();
+
     if (ordering) {
       query = query.orderBy(ordering);
     }
@@ -124,11 +128,8 @@ export class PostgresBread {
       query = this.withPagination(query, pagination.count, pagination.page);
 
       if (pagination.page) {
-        const totalCountResult = await query
-          .clone()
+        const totalCountResult = await queryWithFilters
           .count(this.primaryKeyColumn, { as: 'value' })
-          .offset(0)
-          .limit(1)
           .first();
 
         if (totalCountResult) {

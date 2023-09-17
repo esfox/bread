@@ -1,5 +1,5 @@
-- Pass Knex connection instead to `PostgresBread` and make it DB-agnostic
-- DB-specific breads after making DB-agnostic bread
+- Transactions support
+- (postgres done) DB-specific breads after making DB-agnostic bread
 - Debug mode where each query generated is logged
 - Table columns constants builder from schema
 - Table types builder from schema

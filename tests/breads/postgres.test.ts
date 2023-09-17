@@ -1,57 +1,35 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { PostgresBread } from '../../src/breads/postgres';
 import dotenv from 'dotenv';
-import { incrementalNumber, randFullName, randParagraph } from '@ngneat/falso';
+import knex from 'knex';
+import { PostgresBread } from '../../src/breads/postgres';
+import { mkdirSync } from 'fs';
+import { mockData, mockRecord2 } from './mock';
 
 dotenv.config({ path: '.env.test.local' });
 
-const schema = 'public';
+try {
+  mkdirSync('.tmp');
+} catch (error) {}
+
 const table = 'postgresbread_test';
 const primaryKeyColumn = 'id';
-
-const idFactory = incrementalNumber();
-
-const mockData = new Array(10).fill(0).map((_, i) => ({
-  id: idFactory(),
-  name: randFullName(),
-  description: randParagraph(),
-  direction: i % 2 === 0 ? 'left' : 'right',
-}));
-
-mockData.push({
-  id: idFactory(),
-  name: 'there is foobar in this name',
-  description: randParagraph(),
-  direction: 'left',
+const connectionString = process.env.TEST_POSTGRES_CONNECTION_STRING as string;
+const connection = knex({
+  client: 'pg',
+  connection: connectionString,
+  pool: { max: 2 },
 });
-
-mockData.push({
-  id: idFactory(),
-  name: randFullName(),
-  description: 'there is foobar in this description',
-  direction: 'right',
-});
-
-mockData.push({
-  id: idFactory(),
-  name: randFullName(),
-  description: 'there is foobar in this description',
-  direction: 'left',
-});
-
-const mockRecord1 = mockData[0];
-const mockRecord2 = mockData[1];
 
 const postgresBread = new PostgresBread({
-  connectionString: process.env.TEST_POSTGRES_CONNECTION_STRING as string,
+  connectionString: connectionString,
   table,
   primaryKeyColumn,
 });
 
 beforeAll(async () => {
-  const tableExists = await postgresBread.db.schema.hasTable(table);
+  const tableExists = await connection.schema.withSchema('public').hasTable(table);
   if (!tableExists) {
-    await postgresBread.db.schema.withSchema(schema).createTable(table, (table) => {
+    await connection.schema.withSchema('public').createTable(table, (table) => {
       table.increments('id');
       table.string('name');
       table.text('description');
@@ -59,66 +37,15 @@ beforeAll(async () => {
     });
   }
 
-  await postgresBread.db.batchInsert(table, mockData);
+  await connection.batchInsert(table, mockData);
 });
 
 afterAll(async () => {
-  await postgresBread.db.schema.withSchema(schema).dropTableIfExists(table);
+  await connection.schema.withSchema('public').dropTableIfExists(table);
 });
 
-test('`browse`', async () => {
-  const { records } = await postgresBread.browse();
-  expect(records).toMatchObject(mockData);
-});
-
-test('`browse` pagination', async () => {
-  const page = 2;
-  let count = 5;
-  const result1 = await postgresBread.browse({
-    pagination: { page, count },
-  });
-  expect(result1.records).toMatchObject(mockData.slice(count, 10));
-  expect(result1.totalRecords).toBe(mockData.length);
-
-  count = 8;
-  const result2 = await postgresBread.browse({
-    pagination: { page, count },
-  });
-  expect(result2.records).toMatchObject(mockData.slice(count, mockData.length));
-  expect(result2.totalRecords).toBe(mockData.length);
-});
-
-test('`browse` filters with single value', async () => {
-  const direction = 'left';
-  const leftMockRecords = mockData.filter((mockRecord) => mockRecord.direction === direction);
-  const { records } = await postgresBread.browse({
-    filters: [
-      {
-        field: 'direction',
-        value: direction,
-      },
-    ],
-  });
-  expect(records).toMatchObject(leftMockRecords);
-  expect(records.every((record) => record.direction === direction)).toBe(true);
-});
-
-test('`browse` filters with array values', async () => {
-  const namesToFind = mockData.slice(0, 3).map((mockRecord) => mockRecord.name);
-
-  const { records } = await postgresBread.browse({
-    filters: [
-      {
-        field: 'name',
-        value: namesToFind,
-      },
-    ],
-  });
-  expect(records).toMatchObject(mockData.slice(0, 3));
-});
-
-test('`browse` search', async () => {
-  const searchTerm = 'foobar';
+test('`browse` case-insensitive search', async () => {
+  const searchTerm = 'fOoBaR';
   const result1 = await postgresBread.browse({
     search: {
       term: searchTerm,
@@ -127,7 +54,9 @@ test('`browse` search', async () => {
   });
 
   const withQuery = mockData.filter(
-    (record) => record.name.includes(searchTerm) || record.description.includes(searchTerm),
+    (record) =>
+      record.name.includes(searchTerm.toLowerCase()) ||
+      record.description.includes(searchTerm.toLowerCase()),
   );
   expect(result1.records).toMatchObject(withQuery);
 
@@ -139,89 +68,15 @@ test('`browse` search', async () => {
   });
 
   const withQueryInDescription = mockData.filter((record) =>
-    record.description.includes(searchTerm),
+    record.description.includes(searchTerm.toLowerCase()),
   );
   expect(result2.records).toMatchObject(withQueryInDescription);
 });
 
-test('`browse` sorting', async () => {
-  const { records } = await postgresBread.browse({
-    sorting: [
-      {
-        field: 'id',
-        order: 'desc',
-      },
-    ],
-  });
-  const reversedMockData = mockData.reverse();
-  expect(records).toMatchObject(reversedMockData);
-});
-
-test('`browse` filters, search, sorting and pagination', async () => {
-  const searchTerm = 'foobar';
-  const { records } = await postgresBread.browse({
-    filters: [
-      {
-        field: 'direction',
-        value: 'left',
-      },
-    ],
-    search: {
-      term: searchTerm,
-      fields: ['name', 'description'],
-    },
-    sorting: [
-      {
-        field: 'id',
-        order: 'desc',
-      },
-    ],
-    pagination: {
-      page: 2,
-      count: 1,
-    },
-  });
-
-  const expectedRecord = mockData
-    .filter(
-      (record) =>
-        record.direction === 'left' &&
-        (record.name.includes(searchTerm) || record.description.includes(searchTerm)),
-    )
-    .sort((a, b) => b.id - a.id)[1];
-  expect(records[0]).toMatchObject(expectedRecord);
-});
-
-test('`read`', async () => {
-  const result = await postgresBread.read({ id: mockRecord1.id });
-  expect(result.id).toBe(mockRecord1.id);
-});
-
-test('`edit`', async () => {
-  const updateData = {
-    name: randFullName(),
-    description: randParagraph(),
-  };
-
-  const result = await postgresBread.edit({ id: mockRecord1.id, updateData });
-  expect(result).toMatchObject({ id: mockRecord1.id, ...updateData });
-});
-
-test('`add`', async () => {
-  const newData = {
-    id: idFactory(),
-    name: randFullName(),
-    description: randParagraph(),
-  };
-
-  const result = await postgresBread.add({ data: newData });
-  expect(result).toMatchObject(newData);
-});
-
-test('`delete`', async () => {
+test('`delete` with returned deleted record', async () => {
   const mockRecordName = mockRecord2.name;
-  const result = await postgresBread.delete({ id: mockRecord2.id });
-  expect(result).toMatchObject(mockRecord2);
+  const deletedRecord = await postgresBread.delete({ id: mockRecord2.id });
+  expect(deletedRecord).toMatchObject(mockRecord2);
 
   const { records } = await postgresBread.browse();
   const remainingNames = records.map((record) => record.name);

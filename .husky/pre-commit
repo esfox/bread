@@ -4,4 +4,5 @@
 npm run env -- concurrently -g \
 "npm run env -- lint-staged --concurrent false" \
 "npm run env -- tsc --noEmit" \
-"git diff --cached --name-only | npx cspell --no-summary --no-progress --no-must-find-files --file-list stdin"
+"git diff --cached --name-only | npx cspell --no-summary --no-progress --no-must-find-files --file-list stdin" \
+"npm run test -- --run"

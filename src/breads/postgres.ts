@@ -1,7 +1,7 @@
 import knex, { Knex } from 'knex';
 import pg from 'pg';
 
-import { Id, SqlComparison } from '@/types';
+import { FilterParams, Id, PaginationParams, SearchParams, SortingParams } from '@/types';
 
 pg.types.setTypeParser(pg.types.builtins.INT8, (value: string) => Number(value));
 pg.types.setTypeParser(pg.types.builtins.FLOAT8, (value: string) => Number(value));
@@ -37,7 +37,8 @@ export class PostgresBread {
     this.primaryKeyColumn = primaryKeyColumn;
   }
 
-  private withPagination(query: Knex.QueryBuilder, count: number, page?: number) {
+  private withPagination(query: Knex.QueryBuilder, pagination: PaginationParams) {
+    const { count, page } = pagination;
     let newQuery = query;
     if (count) {
       newQuery = newQuery.limit(count);
@@ -50,33 +51,36 @@ export class PostgresBread {
     return newQuery;
   }
 
-  private withFilters(
-    query: Knex.QueryBuilder,
-    filters: {
-      column: string;
-      value: Knex.Value;
-      comparison?: SqlComparison;
-    }[],
-  ) {
+  private withFilters(query: Knex.QueryBuilder, filters: FilterParams) {
     let newQuery = query;
     for (const filter of filters) {
-      const { column, value, comparison } = filter;
+      const { field, value, comparison } = filter;
       if (Array.isArray(value)) {
-        newQuery = newQuery.whereIn(column, value);
+        newQuery = newQuery.whereIn(field, value);
       } else {
-        newQuery = newQuery.where(column, comparison ?? '=', value);
+        newQuery = newQuery.where(field, comparison ?? '=', value);
       }
     }
 
     return newQuery;
   }
 
-  private withSearch(query: Knex.QueryBuilder, searchQuery: string, searchFields: string[]) {
+  private withSearch(query: Knex.QueryBuilder, searchParams: SearchParams) {
+    const { term, fields } = searchParams;
     return query.where((queryBuilder) => {
-      for (const field of searchFields) {
-        queryBuilder.orWhereILike(field, `%${searchQuery}%`);
+      for (const field of fields) {
+        queryBuilder.orWhereILike(field, `%${term}%`);
       }
     });
+  }
+
+  private withSorting(query: Knex.QueryBuilder, sorting: SortingParams) {
+    const orderByParams = sorting.map((sort) => ({
+      column: sort.field,
+      order: sort.order,
+    }));
+
+    return query.orderBy(orderByParams);
   }
 
   protected query() {
@@ -85,47 +89,34 @@ export class PostgresBread {
 
   async browse(
     args: {
-      pagination?: {
-        page?: number;
-        count: number;
-      };
-      filters?: {
-        column: string;
-        value: Knex.Value;
-        comparison?: SqlComparison;
-      }[];
-      search?: {
-        query: string;
-        fields: string[];
-      };
-      ordering?: {
-        column: string;
-        order: 'asc' | 'desc';
-      }[];
+      pagination?: PaginationParams;
+      filters?: FilterParams;
+      search?: SearchParams;
+      sorting?: SortingParams;
     } = {},
   ) {
     let query = this.query().select();
 
-    const { pagination, filters, search, ordering } = args ?? {};
+    const { pagination, filters, search, sorting } = args ?? {};
     if (filters) {
       query = this.withFilters(query, filters);
     }
 
     if (search) {
-      query = this.withSearch(query, search.query, search.fields);
+      query = this.withSearch(query, search);
     }
 
     /* The query is cloned here since the total records query should have
-      filters but not ordering, since the query will not work if with ordering. */
+      filters but not sorting, since the query will not work if with sorting. */
     const queryWithFilters = query.clone();
 
-    if (ordering) {
-      query = query.orderBy(ordering);
+    if (sorting) {
+      query = this.withSorting(query, sorting);
     }
 
     let totalRecords;
     if (pagination) {
-      query = this.withPagination(query, pagination.count, pagination.page);
+      query = this.withPagination(query, pagination);
 
       if (pagination.page) {
         const totalCountResult = await queryWithFilters

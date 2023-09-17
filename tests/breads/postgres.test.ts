@@ -94,7 +94,7 @@ test('`browse` filters with single value', async () => {
   const { records } = await postgresBread.browse({
     filters: [
       {
-        column: 'direction',
+        field: 'direction',
         value: direction,
       },
     ],
@@ -109,7 +109,7 @@ test('`browse` filters with array values', async () => {
   const { records } = await postgresBread.browse({
     filters: [
       {
-        column: 'name',
+        field: 'name',
         value: namesToFind,
       },
     ],
@@ -118,35 +118,37 @@ test('`browse` filters with array values', async () => {
 });
 
 test('`browse` search', async () => {
-  const query = 'foobar';
+  const searchTerm = 'foobar';
   const result1 = await postgresBread.browse({
     search: {
-      query,
+      term: searchTerm,
       fields: ['name', 'description'],
     },
   });
 
   const withQuery = mockData.filter(
-    (record) => record.name.includes(query) || record.description.includes(query),
+    (record) => record.name.includes(searchTerm) || record.description.includes(searchTerm),
   );
   expect(result1.records).toMatchObject(withQuery);
 
   const result2 = await postgresBread.browse({
     search: {
-      query,
+      term: searchTerm,
       fields: ['description'],
     },
   });
 
-  const withQueryInDescription = mockData.filter((record) => record.description.includes(query));
+  const withQueryInDescription = mockData.filter((record) =>
+    record.description.includes(searchTerm),
+  );
   expect(result2.records).toMatchObject(withQueryInDescription);
 });
 
-test('`browse` ordering', async () => {
+test('`browse` sorting', async () => {
   const { records } = await postgresBread.browse({
-    ordering: [
+    sorting: [
       {
-        column: 'id',
+        field: 'id',
         order: 'desc',
       },
     ],
@@ -155,23 +157,22 @@ test('`browse` ordering', async () => {
   expect(records).toMatchObject(reversedMockData);
 });
 
-// TODO: Add ordering
-test('`browse` filters, search, ordering and pagination', async () => {
-  const searchQuery = 'foobar';
+test('`browse` filters, search, sorting and pagination', async () => {
+  const searchTerm = 'foobar';
   const { records } = await postgresBread.browse({
     filters: [
       {
-        column: 'direction',
+        field: 'direction',
         value: 'left',
       },
     ],
     search: {
-      query: 'foobar',
+      term: searchTerm,
       fields: ['name', 'description'],
     },
-    ordering: [
+    sorting: [
       {
-        column: 'id',
+        field: 'id',
         order: 'desc',
       },
     ],
@@ -185,7 +186,7 @@ test('`browse` filters, search, ordering and pagination', async () => {
     .filter(
       (record) =>
         record.direction === 'left' &&
-        (record.name.includes(searchQuery) || record.description.includes(searchQuery)),
+        (record.name.includes(searchTerm) || record.description.includes(searchTerm)),
     )
     .sort((a, b) => b.id - a.id)[1];
   expect(records[0]).toMatchObject(expectedRecord);

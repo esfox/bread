@@ -2,14 +2,14 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import dotenv from 'dotenv';
 import { randFullName, randParagraph } from '@ngneat/falso';
 import knex from 'knex';
-import { SqlBread } from '../../src/breads/sql';
+import { SqlSource } from '../../src/sources/sql';
 import { mkdirSync, rmSync } from 'fs';
 import { mockData, mockId, mockRecord1, mockRecord2 } from './mock';
 
 dotenv.config({ path: '.env.test.local' });
 
 const tmpDir = '.tmp';
-const table = 'sqlbread_test';
+const table = 'sqlsource_test';
 const primaryKeyColumn = 'id';
 const connection = knex({
   client: 'better-sqlite3',
@@ -19,7 +19,7 @@ const connection = knex({
   useNullAsDefault: true,
 });
 
-const sqlBread = new SqlBread({
+const sqlSource = new SqlSource({
   connection,
   table,
   primaryKeyColumn,
@@ -52,21 +52,21 @@ afterAll(async () => {
 });
 
 test('`browse`', async () => {
-  const { records } = await sqlBread.browse();
+  const { records } = await sqlSource.browse();
   expect(records).toMatchObject(mockData);
 });
 
 test('`browse` pagination', async () => {
   const page = 2;
   let count = 5;
-  const result1 = await sqlBread.browse({
+  const result1 = await sqlSource.browse({
     pagination: { page, count },
   });
   expect(result1.records).toMatchObject(mockData.slice(count, 10));
   expect(result1.totalRecords).toBe(mockData.length);
 
   count = 8;
-  const result2 = await sqlBread.browse({
+  const result2 = await sqlSource.browse({
     pagination: { page, count },
   });
   expect(result2.records).toMatchObject(mockData.slice(count, mockData.length));
@@ -76,7 +76,7 @@ test('`browse` pagination', async () => {
 test('`browse` filters with single value', async () => {
   const direction = 'left';
   const leftMockRecords = mockData.filter((mockRecord) => mockRecord.direction === direction);
-  const { records } = await sqlBread.browse({
+  const { records } = await sqlSource.browse({
     filters: [
       {
         field: 'direction',
@@ -91,7 +91,7 @@ test('`browse` filters with single value', async () => {
 test('`browse` filters with array values', async () => {
   const namesToFind = mockData.slice(0, 3).map((mockRecord) => mockRecord.name);
 
-  const { records } = await sqlBread.browse({
+  const { records } = await sqlSource.browse({
     filters: [
       {
         field: 'name',
@@ -104,7 +104,7 @@ test('`browse` filters with array values', async () => {
 
 test('`browse` search', async () => {
   const searchTerm = 'foobar';
-  const result1 = await sqlBread.browse({
+  const result1 = await sqlSource.browse({
     search: {
       term: searchTerm,
       fields: ['name', 'description'],
@@ -116,7 +116,7 @@ test('`browse` search', async () => {
   );
   expect(result1.records).toMatchObject(withQuery);
 
-  const result2 = await sqlBread.browse({
+  const result2 = await sqlSource.browse({
     search: {
       term: searchTerm,
       fields: ['description'],
@@ -130,7 +130,7 @@ test('`browse` search', async () => {
 });
 
 test('`browse` sorting', async () => {
-  const { records } = await sqlBread.browse({
+  const { records } = await sqlSource.browse({
     sorting: [
       {
         field: 'id',
@@ -144,7 +144,7 @@ test('`browse` sorting', async () => {
 
 test('`browse` filters, search, sorting and pagination', async () => {
   const searchTerm = 'foobar';
-  const { records } = await sqlBread.browse({
+  const { records } = await sqlSource.browse({
     filters: [
       {
         field: 'direction',
@@ -178,7 +178,7 @@ test('`browse` filters, search, sorting and pagination', async () => {
 });
 
 test('`read`', async () => {
-  const result = await sqlBread.read({ id: mockRecord1.id });
+  const result = await sqlSource.read({ id: mockRecord1.id });
   expect(result.id).toBe(mockRecord1.id);
 });
 
@@ -188,7 +188,7 @@ test('`edit`', async () => {
     description: randParagraph(),
   };
 
-  const result = await sqlBread.edit({ id: mockRecord1.id, updateData });
+  const result = await sqlSource.edit({ id: mockRecord1.id, updateData });
   expect(result).toMatchObject({ id: mockRecord1.id, ...updateData });
 });
 
@@ -199,16 +199,16 @@ test('`add`', async () => {
     description: randParagraph(),
   };
 
-  const result = await sqlBread.add({ data: newData });
+  const result = await sqlSource.add({ data: newData });
   expect(result).toMatchObject(newData);
 });
 
 test('`delete`', async () => {
   const mockRecordName = mockRecord2.name;
-  const deletedCount = await sqlBread.delete({ id: mockRecord2.id });
+  const deletedCount = await sqlSource.delete({ id: mockRecord2.id });
   expect(deletedCount).toBe(1);
 
-  const { records } = await sqlBread.browse();
+  const { records } = await sqlSource.browse();
   const remainingNames = records.map((record) => record.name);
   expect(remainingNames.some((name) => name === mockRecordName)).toBe(false);
 });

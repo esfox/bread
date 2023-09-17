@@ -1,8 +1,8 @@
 - Transactions support
-- (postgres done) DB-specific breads after making DB-agnostic bread
+- (postgres done) DB-specific sources after making DB-agnostic source
 - Debug mode where each query generated is logged
 - Table columns constants builder from schema
 - Table types builder from schema
-- Bread for JSON file data source
+- Source for JSON files
 - Encryption
 - Migrator and migrations manager (unsure plan)

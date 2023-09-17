@@ -1,4 +1,4 @@
-import { SqlBread } from './sql';
+import { SqlSource } from './sql';
 
 import knex, { Knex } from 'knex';
 import pg from 'pg';
@@ -11,7 +11,7 @@ pg.types.setTypeParser(pg.types.builtins.NUMERIC, (value: string) => Number(valu
 
 const defaultPoolMaxCount = 10;
 
-export class PostgresBread extends SqlBread {
+export class PostgresSource extends SqlSource {
   constructor({
     connectionString,
     table,

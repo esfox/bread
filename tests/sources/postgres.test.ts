@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import dotenv from 'dotenv';
 import knex from 'knex';
-import { PostgresBread } from '../../src/breads/postgres';
+import { PostgresSource } from '../../src/sources/postgres';
 import { mkdirSync } from 'fs';
 import { mockData, mockRecord2 } from './mock';
 
@@ -11,7 +11,7 @@ try {
   mkdirSync('.tmp');
 } catch (error) {}
 
-const table = 'postgresbread_test';
+const table = 'postgressource_test';
 const primaryKeyColumn = 'id';
 const connectionString = process.env.TEST_POSTGRES_CONNECTION_STRING as string;
 const connection = knex({
@@ -20,7 +20,7 @@ const connection = knex({
   pool: { max: 2 },
 });
 
-const postgresBread = new PostgresBread({
+const postgresSource = new PostgresSource({
   connectionString: connectionString,
   table,
   primaryKeyColumn,
@@ -46,7 +46,7 @@ afterAll(async () => {
 
 test('`browse` case-insensitive search', async () => {
   const searchTerm = 'fOoBaR';
-  const result1 = await postgresBread.browse({
+  const result1 = await postgresSource.browse({
     search: {
       term: searchTerm,
       fields: ['name', 'description'],
@@ -60,7 +60,7 @@ test('`browse` case-insensitive search', async () => {
   );
   expect(result1.records).toMatchObject(withQuery);
 
-  const result2 = await postgresBread.browse({
+  const result2 = await postgresSource.browse({
     search: {
       term: searchTerm,
       fields: ['description'],
@@ -75,10 +75,10 @@ test('`browse` case-insensitive search', async () => {
 
 test('`delete` with returned deleted record', async () => {
   const mockRecordName = mockRecord2.name;
-  const deletedRecord = await postgresBread.delete({ id: mockRecord2.id });
+  const deletedRecord = await postgresSource.delete({ id: mockRecord2.id });
   expect(deletedRecord).toMatchObject(mockRecord2);
 
-  const { records } = await postgresBread.browse();
+  const { records } = await postgresSource.browse();
   const remainingNames = records.map((record) => record.name);
   expect(remainingNames.some((name) => name === mockRecordName)).toBe(false);
 });

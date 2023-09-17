@@ -2,7 +2,7 @@ import { Knex } from 'knex';
 
 import { FilterParams, Id, PaginationParams, SearchParams, SortingParams } from '@/types';
 
-export class SqlBread {
+export class SqlSource {
   protected connection: Knex;
 
   protected table: string;

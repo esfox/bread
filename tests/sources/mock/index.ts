@@ -1,8 +1,15 @@
 import { incrementalNumber, randFullName, randParagraph } from '@ngneat/falso';
 
+type MockRecord = {
+  id: number;
+  name: string;
+  description: string;
+  direction: 'left' | 'right';
+};
+
 export const mockId = incrementalNumber();
 
-export const mockData = new Array(10).fill(0).map((_, i) => ({
+export const mockData: MockRecord[] = new Array(10).fill(0).map((_, i) => ({
   id: mockId(),
   name: randFullName(),
   description: randParagraph(),
@@ -32,3 +39,14 @@ mockData.push({
 
 export const mockRecord1 = mockData[0];
 export const mockRecord2 = mockData[1];
+
+export function createNewMockRecord() {
+  const newMockRecord: Partial<MockRecord> = {
+    id: mockId(),
+    name: randFullName(),
+    description: randParagraph(),
+    direction: Math.random() > 0.5 ? 'left' : 'right',
+  };
+
+  return newMockRecord;
+}

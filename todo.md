@@ -1,4 +1,4 @@
-- Transactions support
+- Switch to functional?
 - (postgres done) DB-specific sources after making DB-agnostic source
 - Debug mode where each query generated is logged
 - Table columns constants builder from schema

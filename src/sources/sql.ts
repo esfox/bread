@@ -1,3 +1,5 @@
+import { Transaction } from './utils/transaction';
+
 import { Knex } from 'knex';
 
 import { FilterParams, Id, PaginationParams, SearchParams, SortingParams } from '@/types';
@@ -8,6 +10,8 @@ export class SqlSource {
   protected table: string;
 
   protected primaryKeyColumn: string;
+
+  private transaction?: Transaction;
 
   constructor({
     connection,
@@ -24,7 +28,16 @@ export class SqlSource {
   }
 
   protected query() {
-    return this.connection(this.table);
+    let query;
+    if (this.transaction) {
+      query = this.transaction.query(this.table);
+    }
+
+    if (!query) {
+      query = this.connection(this.table);
+    }
+
+    return query;
   }
 
   protected withPagination(query: Knex.QueryBuilder, pagination: PaginationParams) {
@@ -73,6 +86,16 @@ export class SqlSource {
     return query.orderBy(orderByParams);
   }
 
+  async startTransaction() {
+    const transaction = new Transaction();
+    return transaction.start(this.connection);
+  }
+
+  inTransaction(transaction: Transaction) {
+    this.transaction = transaction;
+    return this;
+  }
+
   async browse(
     args: {
       pagination?: PaginationParams;
@@ -116,12 +139,18 @@ export class SqlSource {
     }
 
     const records = await query;
+
+    this.endQuery();
+
     const returnValue = { records, totalRecords };
     return returnValue;
   }
 
   async read({ id, notFoundReturn }: { id: Id; notFoundReturn?: () => unknown }) {
     const record = await this.query().where(this.primaryKeyColumn, id).limit(1).first();
+
+    this.endQuery();
+
     if (!record && notFoundReturn) {
       return notFoundReturn();
     }
@@ -143,6 +172,8 @@ export class SqlSource {
       .where(this.primaryKeyColumn, id)
       .returning('*');
 
+    this.endQuery();
+
     if (!record && notFoundReturn) {
       return notFoundReturn();
     }
@@ -152,16 +183,24 @@ export class SqlSource {
 
   async add({ data }: { data: Record<string, Knex.Value> }) {
     const result = await this.query().insert(data).returning('*');
+    this.endQuery();
     return result[0];
   }
 
   async delete({ id, notFoundReturn }: { id: Id; notFoundReturn?: () => unknown }) {
     const deletedCount = await this.query().delete().where(this.primaryKeyColumn, id);
+    this.endQuery();
 
     if (deletedCount <= 0 && notFoundReturn) {
       return notFoundReturn();
     }
 
     return deletedCount;
+  }
+
+  private endQuery() {
+    if (this.transaction) {
+      this.transaction = undefined;
+    }
   }
 }

@@ -4,12 +4,11 @@ import { randFullName, randParagraph } from '@ngneat/falso';
 import knex from 'knex';
 import { SqlSource } from '../../src/sources/sql';
 import { mkdirSync, rmSync } from 'fs';
-import { mockData, mockId, mockRecord1, mockRecord2 } from './mock';
+import { createNewMockRecord, mockData, mockId, mockRecord1, mockRecord2 } from './mock';
 
 dotenv.config({ path: '.env.test.local' });
 
 const tmpDir = '.tmp';
-const table = 'sqlsource_test';
 const primaryKeyColumn = 'id';
 const connection = knex({
   client: 'better-sqlite3',
@@ -19,9 +18,17 @@ const connection = knex({
   useNullAsDefault: true,
 });
 
+const table = 'sqlsource_test';
 const sqlSource = new SqlSource({
   connection,
   table,
+  primaryKeyColumn,
+});
+
+const table2 = 'sqlsource_test2';
+const sqlSource2 = new SqlSource({
+  connection,
+  table: table2,
   primaryKeyColumn,
 });
 
@@ -40,11 +47,20 @@ beforeAll(async () => {
     });
   }
 
+  const table2Exists = await connection.schema.hasTable(table2);
+  if (!table2Exists) {
+    await connection.schema.createTable(table2, (table) => {
+      table.increments('id');
+      table.integer('sqlsource_test_id');
+    });
+  }
+
   await connection.batchInsert(table, mockData);
 });
 
 afterAll(async () => {
   await connection.schema.dropTableIfExists(table);
+  await connection.schema.dropTableIfExists(table2);
 
   try {
     rmSync(tmpDir, { recursive: true, force: true });
@@ -211,4 +227,23 @@ test('`delete`', async () => {
   const { records } = await sqlSource.browse();
   const remainingNames = records.map((record) => record.name);
   expect(remainingNames.some((name) => name === mockRecordName)).toBe(false);
+});
+
+test('Query with transaction', async () => {
+  const newMockData = createNewMockRecord();
+  const transaction = await sqlSource.startTransaction();
+  const insertResult = await sqlSource.inTransaction(transaction).add({ data: newMockData });
+
+  const table2Record = { sqlsource_test_id: insertResult.id };
+  const insertResult2 = await sqlSource2.inTransaction(transaction).add({ data: table2Record });
+
+  transaction.end();
+
+  expect(insertResult2.sqlsource_test_id).toBe(insertResult.id);
+
+  const { records: records1 } = await sqlSource.browse();
+  const { records: records2 } = await sqlSource2.browse();
+  const newRecord = records1.find((record) => record.id === insertResult.id);
+  const newRecord2 = records2.find((record) => record.sqlsource_test_id === newRecord.id);
+  expect(newRecord2).not.toBeUndefined();
 });

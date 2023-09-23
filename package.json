@@ -8,8 +8,8 @@
     "/dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepare": "husky install",
+    "build": "tsc && resolve-tspaths",
+    "prepare": "npm run build",
     "test": "vitest"
   },
   "devDependencies": {
@@ -33,10 +33,11 @@
     "pg": "^8.11.3",
     "pg-native": "^3.0.1",
     "prettier": "^3.0.3",
-    "typescript": "^5.2.2",
+    "resolve-tspaths": "^0.8.15",
     "vitest": "^0.34.4"
   },
   "dependencies": {
-    "knex": "^2.5.1"
+    "knex": "^2.5.1",
+    "typescript": "^5.2.2"
   }
 }
